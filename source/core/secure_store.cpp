@@ -168,4 +168,38 @@ bool save(const Session &session) {
 
 void clear() { remove(path().c_str()); }
 
+bool looksLikeApiKey(const std::string &key) {
+	if (key.size() < 20 || key.size() > 400) {
+		return false;
+	}
+	for (char c : key) {
+		if (c <= ' ' || c > '~') {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool importKeyFile(Session &out) {
+	const std::string file = sys::dataDir() + "/api_key.txt";
+	std::vector<uint8_t> data;
+	if (!readAll(file, data)) {
+		return false;
+	}
+	std::string key = util::trim(std::string(data.begin(), data.end()));
+	key = key.substr(0, key.find_first_of(" \r\n\t"));
+	if (!looksLikeApiKey(key)) {
+		Log::write("[store] api_key.txt does not contain a key");
+		return false;
+	}
+	out = Session();
+	out.fields["api_key"] = key;
+	if (!save(out)) {
+		return false;
+	}
+	remove(file.c_str());
+	Log::write("[store] imported api_key.txt");
+	return true;
+}
+
 } // namespace SecureStore

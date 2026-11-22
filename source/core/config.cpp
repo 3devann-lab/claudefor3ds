@@ -90,6 +90,17 @@ void Config::load() {
 	utcOffset = (int)json::i64(doc, "utc_offset", 0);
 	timezone = json::str(doc, "timezone", "UTC");
 	webSearch = json::boolean(doc, "web_search", true);
+	apiBase = json::str(doc, "api_base", "https://api.anthropic.com");
+	customInstructions = json::str(doc, "custom_instructions");
+	connectors.clear();
+	if (const json::Value *list = json::arr(doc, "connectors")) {
+		for (const auto &c : list->GetArray()) {
+			Connector con{json::str(c, "name"), json::str(c, "url"), json::str(c, "authorization_token")};
+			if (!con.name.empty() && !con.url.empty()) {
+				connectors.push_back(con);
+			}
+		}
+	}
 	if (utcOffsetManual) {
 		util::setUtcOffsetMinutes(utcOffset);
 	}
@@ -118,6 +129,13 @@ void Config::save() const {
 	w.kv("utc_offset", utcOffsetManual ? utcOffset : util::utcOffsetMinutes());
 	w.kv("timezone", timezone);
 	w.kv("web_search", webSearch);
+	w.kv("api_base", apiBase);
+	w.kv("custom_instructions", customInstructions);
+	w.key("connectors").beginArray();
+	for (const auto &c : connectors) {
+		w.beginObject().kv("name", c.name).kv("url", c.url).kv("authorization_token", c.token).endObject();
+	}
+	w.endArray();
 	w.endObject();
 
 	sys::ensureDir(sys::dataDir());

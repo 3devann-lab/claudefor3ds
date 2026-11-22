@@ -1,5 +1,4 @@
-// A source of Claude. The concrete backend depends on the sign-in route, which is not chosen yet
-// (a companion bridge to the official Claude Code on the user's computer, or the Anthropic API).
+// A source of Claude: the official Anthropic API, signed in with the user's API key.
 // Everything here is called on the main thread, and every callback arrives on the main thread.
 #pragma once
 
@@ -40,10 +39,8 @@ struct Conversation {
 	uint32_t generation = 0;
 	bool busy = false;
 	bool loaded = false;
-	// Claude Code session state ("running", "idle", ...), when known.
-	std::string sessionStatus;
-	// Connectors the session reported (Claude Code init event).
-	std::vector<std::string> connectors;
+	// Code mode: the sandbox container reused across turns.
+	std::string containerId;
 
 	void clear() {
 		id.clear();
@@ -51,8 +48,7 @@ struct Conversation {
 		messages.clear();
 		busy = false;
 		loaded = false;
-		sessionStatus.clear();
-		connectors.clear();
+		containerId.clear();
 		generation++;
 	}
 };
@@ -88,11 +84,7 @@ class Backend {
 	virtual bool supportsCodeMode() const { return true; }
 
 	// --- signing in -------------------------------------------------------
-	virtual void requestCode(const std::string &email, ResultCb done) { done(Result::fail("Not supported")); }
-	virtual void verifyCode(const std::string &email, const std::string &code, ResultCb done) {
-		done(Result::fail("Not supported"));
-	}
-	// Checks the stored session and loads the account.
+	// Checks the key and loads the account.
 	virtual void connect(ResultCb done) = 0;
 	virtual const Account &account() const { return account_; }
 	virtual void logout() {}
@@ -108,13 +100,12 @@ class Backend {
 	                               std::function<void(const Result &, std::vector<ConversationSummary>)> done) = 0;
 	// Loads conv.id's messages into conv.
 	virtual void openConversation(Conversation &conv, ResultCb done) = 0;
-	// Media referenced by a block (an image URL or "file:<id>"): raw bytes and MIME type.
-	virtual void fetchMedia(const std::string &key,
+	// Media referenced by a block (an image URL or "file:<id>"): raw bytes, MIME type, file name.
+	// Unless anyType is set, only images are downloaded (others report just type and name).
+	virtual void fetchMedia(const std::string &key, bool anyType,
 	                        std::function<void(bool ok, std::string bytes, std::string mime, std::string name)> done) {
 		done(false, "", "", "");
 	}
-	// A link the user can open on another device for a conversation or file.
-	virtual std::string webLink(const Conversation &conv) const { return ""; }
 
 	// --- talking ----------------------------------------------------------
 	virtual void send(Conversation &conv, const SendOptions &options, TurnListener *listener) = 0;
@@ -130,8 +121,9 @@ class Backend {
 	LifeToken life_;
 };
 
+std::unique_ptr<Backend> makeApiBackend(const Session &session);
 
-// Answer text for a question when it has to go back as a normal message.
+// The user's picks for a question, as the text Claude gets back.
 std::string formatAnswers(const PendingQuestion &question, const std::vector<std::string> &answers);
 
 } // namespace claude

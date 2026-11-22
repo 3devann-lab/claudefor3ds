@@ -16,9 +16,9 @@ include $(DEVKITARM)/3ds_rules
 
 TARGET		:=	ClaudeFor3DS
 BUILD		:=	build
-SOURCES		:=	source source/platform source/core source/net source/claude source/app source/ui source/util
+SOURCES		:=	source source/platform source/core source/net source/claude source/app source/ui source/util library/qrcodegen
 DATA		:=	data
-INCLUDES	:=	source library library/stb
+INCLUDES	:=	source library library/stb library/qrcodegen
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
@@ -91,7 +91,7 @@ cia 3dsx: $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $@
 
 host:
-	@$(MAKE) --no-print-directory -f $(CURDIR)/host/Makefile
+	@$(MAKE) --no-print-directory -f $(CURDIR)/host/Makefile -C $(CURDIR)
 
 $(BUILD):
 	@mkdir -p $@
