@@ -1,10 +1,3 @@
-#---------------------------------------------------------------------------------
-# ClaudeFor3DS - native Claude / Claude Code client for the Nintendo 3DS
-#
-#   make        builds ClaudeFor3DS.3dsx and ClaudeFor3DS.cia
-#   make 3dsx   builds only the .3dsx (no makerom / bannertool needed)
-#   make host   builds the desktop UI simulator used for screenshots and tests
-#---------------------------------------------------------------------------------
 .SUFFIXES:
 
 ifeq ($(strip $(DEVKITARM)),)
