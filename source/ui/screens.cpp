@@ -612,6 +612,11 @@ class QuestionSheet : public Overlay {
 		ui::hints(qq.multiSelect ? "{A} Toggle  {X} Submit  {B} Later" : "{A} Choose  {B} Later");
 	}
 
+	void resume(const std::vector<std::string> &answers, int step) {
+		answers_ = answers;
+		step_ = step;
+	}
+
   private:
 	void choose(int i) {
 		const claude::Question &qq = q_.questions[step_];
@@ -620,10 +625,25 @@ class QuestionSheet : public Overlay {
 			kb.hint = util::ellipsize(qq.question, 60);
 			kb.okLabel = "Answer";
 			kb.multiline = true;
-			std::string text;
-			if (sys::keyboard(kb, text) && !util::trim(text).empty()) {
-				record(util::trim(text));
-			}
+			// The sheet may be gone by the time the keyboard closes; answer through the app.
+			claude::PendingQuestion q = q_;
+			std::vector<std::string> answers = answers_;
+			int step = step_;
+			closed = true;
+			ui::keyboardLater(kb, [q, answers, step](const std::string &text) mutable {
+				std::string t = util::trim(text);
+				if (t.empty()) {
+					return;
+				}
+				answers[step] = t;
+				if (step + 1 < (int)q.questions.size()) {
+					QuestionSheet *next = new QuestionSheet(q);
+					next->resume(answers, step + 1);
+					push(next);
+				} else {
+					App::get().answerQuestion(answers);
+				}
+			});
 			return;
 		}
 		if (qq.multiSelect) {
@@ -1004,10 +1024,7 @@ void openMessageActions(int index) {
 			kb.initial = full;
 			kb.multiline = true;
 			kb.maxLength = 4000;
-			std::string text;
-			if (sys::keyboard(kb, text)) {
-				App::get().submit(text);
-			}
+			ui::keyboardLater(kb, [](const std::string &text) { App::get().submit(text); });
 		});
 	}
 	std::vector<Block> imgs = imagesOf(m);
@@ -1245,10 +1262,7 @@ void signInBottom() {
 		kb.type = sys::KeyboardType::Password;
 		kb.maxLength = 256;
 		kb.okLabel = "Sign in";
-		std::string key;
-		if (sys::keyboard(kb, key)) {
-			a.signInWithKey(key);
-		}
+		ui::keyboardLater(kb, [&a](const std::string &key) { a.signInWithKey(key); });
 	};
 	if (ui::button(16, 84, BOTTOM_W - 32, 34, "Type API key", ui::Style::Primary, false, Icon::Keyboard, true)) {
 		typeKey();

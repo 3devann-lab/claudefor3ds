@@ -42,6 +42,7 @@ static void frame(uint32_t held = 0, bool touch = false, int tx = 0, int ty = 0)
 	screens::drawTop();
 	gfx::beginScreen(gfx::Screen::Bottom, theme::bg);
 	screens::drawBottom();
+	ui::runPendingKeyboard();
 }
 
 static void settle(int frames = 30) {

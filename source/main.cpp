@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
 		gfx::beginScreen(gfx::Screen::Bottom, theme::bg);
 		screens::drawBottom();
 		gfx::endFrame();
+		ui::runPendingKeyboard();
 	}
 
 	app::App::get().shutdown();

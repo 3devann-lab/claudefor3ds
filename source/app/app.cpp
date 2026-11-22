@@ -300,10 +300,7 @@ void App::compose() {
 	kb.multiline = true;
 	kb.maxLength = 4000;
 	kb.okLabel = conv.busy ? "Queue" : "Send";
-	std::string text;
-	if (sys::keyboard(kb, text)) {
-		submit(text);
-	}
+	ui::keyboardLater(kb, [this](const std::string &text) { submit(text); });
 }
 
 void App::submit(const std::string &raw) {

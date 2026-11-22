@@ -2,8 +2,10 @@
 #pragma once
 
 #include "platform/gfx.h"
+#include "platform/system.h"
 #include "ui/theme.h"
 
+#include <functional>
 #include <string>
 
 namespace ui {
@@ -84,6 +86,12 @@ void buttonGlyph(float x, float y, char letter, gfx::Color c);
 void drawToast();
 void toast(const std::string &message);
 bool toastVisible();
+
+// Opens the system keyboard once the current frame is finished (never mid-frame: the keyboard
+// applet takes over the GPU). `done` gets the text when the user confirms.
+void keyboardLater(const sys::KeyboardOptions &options, std::function<void(const std::string &)> done);
+// Main loop, after the frame is submitted.
+void runPendingKeyboard();
 
 // Seconds since start, for animation.
 float time();

@@ -27,6 +27,9 @@ namespace ui {
 using namespace gfx;
 
 namespace {
+bool g_kbPending = false;
+sys::KeyboardOptions g_kbOptions;
+std::function<void(const std::string &)> g_kbDone;
 float g_time = 0;
 uint64_t g_start = 0;
 std::string g_toast;
@@ -34,6 +37,28 @@ float g_toastUntil = 0;
 } // namespace
 
 float time() { return g_time; }
+
+void keyboardLater(const sys::KeyboardOptions &options, std::function<void(const std::string &)> done) {
+	if (g_kbPending) {
+		return;
+	}
+	g_kbPending = true;
+	g_kbOptions = options;
+	g_kbDone = std::move(done);
+}
+
+void runPendingKeyboard() {
+	if (!g_kbPending) {
+		return;
+	}
+	g_kbPending = false;
+	auto done = std::move(g_kbDone);
+	g_kbDone = nullptr;
+	std::string text;
+	if (sys::keyboard(g_kbOptions, text) && done) {
+		done(text);
+	}
+}
 
 void tick() {
 	if (!g_start) {
