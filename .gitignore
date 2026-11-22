@@ -1,0 +1,14 @@
+*.elf
+*.3dsx
+*.cia
+!/ClaudeFor3DS.cia
+*.smdh
+*.map
+*.bnr
+*.icn
+build/
+host/build/
+shots/
+.vscode/
+compile_commands.json
+romfs/build_info.json
