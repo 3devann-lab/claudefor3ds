@@ -101,6 +101,8 @@ make 3dsx       # just the .3dsx
 
 `python3 tools/make_assets.py` regenerates the icon and banner art.
 
+The HOME Menu banner is a still, shaded 3D render of the red spark (`resources/banner.png`). A spinning banner needs a hand-made CGFX model with an animation. If `resources/banner.cgfx` exists, the Makefile uses it instead of the PNG.
+
 The desktop simulator renders every screen to PNG files for checking layout without a console:
 
 ```bash

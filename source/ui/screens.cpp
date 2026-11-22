@@ -379,7 +379,6 @@ void TextViewer::openLinks() { push(new LinksOverlay(layout_.links)); }
 class ImageViewer : public Overlay {
   public:
 	explicit ImageViewer(std::vector<Block> blocks, int start = 0) : blocks_(std::move(blocks)), index_(start) {}
-	bool fullscreen() const override { return true; }
 	void input(const input::State &in) override {
 		if (in.down & input::B) {
 			closed = true;
@@ -424,20 +423,24 @@ class ImageViewer : public Overlay {
 		}
 	}
 	bool drawTop() override {
-		rect(0, 0, TOP_W, SCREEN_H, rgb(0x0E0E0D));
+		// The whole area under the status bar (which stays visible).
+		const float top = chat::VIEW_TOP, areaH = SCREEN_H - top;
+		rect(0, top, TOP_W, areaH, rgb(0x0E0E0D));
 		if (blocks_.empty()) {
 			return true;
 		}
 		const images::Entry &e = images::get(blocks_[index_]);
 		if (e.state == images::State::Ready) {
 			float iw = (float)imageWidth(e.image), ih = (float)imageHeight(e.image);
-			float fit = std::min(TOP_W / iw, SCREEN_H / ih);
+			float fit = std::min(TOP_W / iw, areaH / ih);
 			float s = fit * zoom_;
 			float dw = iw * s, dh = ih * s;
-			float maxPX = std::max(0.0f, (dw - TOP_W) / 2), maxPY = std::max(0.0f, (dh - SCREEN_H) / 2);
+			float maxPX = std::max(0.0f, (dw - TOP_W) / 2), maxPY = std::max(0.0f, (dh - areaH) / 2);
 			panX_ = std::max(-maxPX, std::min(maxPX, panX_));
 			panY_ = std::max(-maxPY, std::min(maxPY, panY_));
-			drawImage(e.image, (TOP_W - dw) / 2 + panX_, (SCREEN_H - dh) / 2 + panY_, dw, dh);
+			clip(0, top, TOP_W, areaH);
+			drawImage(e.image, (TOP_W - dw) / 2 + panX_, top + (areaH - dh) / 2 + panY_, dw, dh);
+			noClip();
 		} else if (e.state == images::State::Loading) {
 			ui::spinner(200, 120, 14, theme::textFaint);
 		} else {
