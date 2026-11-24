@@ -1,7 +1,9 @@
 name: Build CIA
 
-# Builds ClaudeFor3DS.cia and ClaudeFor3DS.3dsx on every push. On main, the CIA is
-# committed to the repository root with "[skip ci]" so that commit does not build again.
+# Builds ClaudeFor3DS.cia and ClaudeFor3DS.3dsx on every push.
+# On main, the CIA is committed to the repository root and both files
+# are uploaded to the latest GitHub Release.
+
 on:
   push:
     branches: ['**']
@@ -20,21 +22,28 @@ concurrency:
 
 jobs:
   build:
-    # Belt and braces: never build the bot's own CIA commit.
+    # Never build the bot's own CIA commit.
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
     runs-on: ubuntu-latest
+
     container: devkitpro/devkitarm:latest
+
     defaults:
       run:
         shell: bash
+
     steps:
       - name: Install host tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git curl unzip xz-utils python3 file ca-certificates
+          apt-get install -y --no-install-recommends \
+            git curl unzip xz-utils python3 file ca-certificates
 
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install makerom and bannertool
         env:
@@ -43,36 +52,85 @@ jobs:
 
       - name: Build
         run: |
-          printf '{"sha":"%s","time":%s}\n' "$GITHUB_SHA" "$(date +%s)" > romfs/build_info.json
+          printf '{"sha":"%s","time":%s}\n' \
+            "$GITHUB_SHA" "$(date +%s)" > romfs/build_info.json
+
           make -j"$(nproc)"
+
           ls -la ClaudeFor3DS.cia ClaudeFor3DS.3dsx
 
-      - name: Upload build
+      # Upload both files as downloadable GitHub Actions artifacts.
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ClaudeFor3DS-${{ github.sha }}
           path: |
             ClaudeFor3DS.cia
             ClaudeFor3DS.3dsx
+          if-no-files-found: error
+          retention-days: 90
 
+      # Commit the newest CIA to the repository root on main.
       - name: Commit ClaudeFor3DS.cia to main
         if: github.ref == 'refs/heads/main'
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -f ClaudeFor3DS.cia
+
           if git diff --cached --quiet; then
             echo "ClaudeFor3DS.cia is unchanged."
             exit 0
           fi
+
           git commit -m "Update ClaudeFor3DS.cia for ${GITHUB_SHA::7} [skip ci]"
+
           for attempt in 1 2 3 4; do
             if git push origin HEAD:main; then
               exit 0
             fi
+
             echo "Push rejected, rebasing onto the latest main (attempt ${attempt})"
+
             git pull --rebase -X theirs origin main
             sleep $((attempt * 5))
           done
+
           exit 1
+
+      # Upload both builds to a stable GitHub Release.
+      # Every successful main build updates the release named latest.
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: ClaudeFor3DS Latest Build
+          body: |
+            # ClaudeFor3DS Latest Build
+
+            This release contains the latest automatically built version of ClaudeFor3DS.
+
+            **Commit:** `${{ github.sha }}`
+
+            **Branch:** `main`
+
+            **Build date:** ${{ github.event.head_commit.timestamp }}
+
+            ## Downloads
+
+            - `ClaudeFor3DS.cia` - Install using FBI on your Nintendo 3DS.
+            - `ClaudeFor3DS.3dsx` - Launch using the Homebrew Launcher.
+
+            This release is automatically updated whenever a new build is successfully published from the main branch.
+
+          files: |
+            ClaudeFor3DS.cia
+            ClaudeFor3DS.3dsx
+
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          make_latest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
